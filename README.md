@@ -1,4 +1,4 @@
-CsRandomForest
+jRandomForest
 ==============
 
-A C# implementation of a random forest algorithm
+A java implementation of a random forest algorithm
