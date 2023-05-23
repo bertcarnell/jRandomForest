@@ -1,0 +1,90 @@
+﻿/*
+ * Copyright 2013 Rob Carnell
+ * 
+ */
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Diagnostics.CodeAnalysis;
+
+namespace RandomForestConnection
+{
+    /// <summary>
+    /// Contains the elements of a confusion matrix
+    /// </summary>
+    [Serializable]
+    public class ConfusionMatrix
+    {
+        /// <summary>
+        /// The Confusion Matrix where the rows are the true classes and the columns are the predicted classes
+        /// </summary>
+        public int[,] confusionMatrix;
+        /// <summary>
+        /// The error rate of the classifier for each truth class
+        /// </summary>
+        public double[] error_rate;
+        /// <summary>
+        /// The class labels for each row and column
+        /// </summary>
+        public int[] classes;
+
+        /// <summary>
+        /// Creates a confusion matrix from the truth classes and predicted classes
+        /// </summary>
+        /// <param name="truthClass">Truth classes for each observation</param>
+        /// <param name="predClass">Predicted classes for each observation</param>
+        /// <returns>The confusion matrix</returns>
+        public static ConfusionMatrix CreateConfusion(int[] truthClass, int[] predClass)
+        {
+            if (truthClass.Length != predClass.Length)
+                throw new ArgumentException("Truth and prediction are not equal lengths", "truthClass");
+            // check that all classes in predClass are found in truthClass if they aren't, add them
+            //   This can happen when creating a confusion matrix for validation options
+            List<int> availableClasses = truthClass.ToList();
+            foreach (int a in predClass)
+            {
+                if (!availableClasses.Contains(a))
+                {
+                    availableClasses.Add(a);
+                }
+            }
+            ConfusionMatrix result = new ConfusionMatrix();
+            result.classes = availableClasses.Distinct().ToArray();
+            int nclasses = result.classes.Length;
+            result.confusionMatrix = new int[nclasses, nclasses];
+            result.error_rate = new double[nclasses];
+
+            int tempTruth, tempPred;
+            for (int i = 0; i < nclasses; i++) // rows
+            {
+                tempTruth = result.classes[i];
+                for (int j = 0; j < nclasses; j++) // cols
+                {
+                    tempPred = result.classes[j];
+                    result.confusionMatrix[i, j] = 0;
+                    for (int k = 0; k < truthClass.Length; k++) // over the input vectors
+                    {
+                        if (tempTruth == truthClass[k] && tempPred == predClass[k])
+                            result.confusionMatrix[i, j] += 1;
+                    }
+                }
+            }
+            double[] rowsums = new MatrixVector<int>(result.confusionMatrix).rowSum();
+            for (int i = 0; i < nclasses; i++)
+            {
+                // initialize the error_rate to zero
+                result.error_rate[i] = 0.0;
+                // check for divide by zero and set the error rate
+                if (rowsums[i] != 0.0)
+                    result.error_rate[i] = 1.0 - Convert.ToDouble(result.confusionMatrix[i, i]) / Convert.ToDouble(rowsums[i]);
+                // else the error_rate has already been initialized to zero
+                // this presents doing this...
+                //   else result.error_rate[i] = 0.0;
+                // which is never executed and therefore not covered by tests
+            }
+            return result;
+        }
+    }
+}
